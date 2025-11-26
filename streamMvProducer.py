@@ -5,7 +5,7 @@ import redis
 from kafka import KafkaProducer
 
 # --- Cấu hình TMDb ---
-# LƯU Ý: Thay thế 'YOUR_API_KEY' bằng API Key thật của bạn
+#
 TMDB_API_KEY = "84ce6d76ae217b1b2136214640c07f43"
 TMDB_BASE_URL = "https://api.themoviedb.org/3"
 POPULAR_MOVIES_ENDPOINT = f"{TMDB_BASE_URL}/movie/popular"
@@ -13,10 +13,10 @@ POPULAR_MOVIES_ENDPOINT = f"{TMDB_BASE_URL}/movie/popular"
 # --- Cấu hình Kafka & Redis ---
 KAFKA_BROKER = "localhost:9092" 
 KAFKA_TOPIC = "tmdb_movies_raw"
-REDIS_HOST = "localhost"  # Sử dụng localhost vì port 6379 đã được mapping từ Docker
+REDIS_HOST = "localhost"
 REDIS_PORT = 6379
 REDIS_KEY_SET = "processed_movie_ids" # Redis set để lưu ID phim đã xử lý
-POLLING_INTERVAL_SECONDS = 600 # Polling mỗi 10 phút (600 giây)
+POLLING_INTERVAL_SECONDS = 600 # Polling mỗi 10 phút
 
 def get_popular_movies(page=1):
     """Gửi yêu cầu đến TMDb API và trả về dữ liệu phim."""
@@ -58,7 +58,7 @@ def run_streaming_producer():
         try:
             newly_processed_count = 0
             
-            # Lấy dữ liệu 5 trang đầu tiên (có thể tùy chỉnh)
+            # Lấy dữ liệu 5 trang đầu tiên
             for page in range(1, 6):
                 movies = get_popular_movies(page=page)
                 

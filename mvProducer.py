@@ -3,7 +3,6 @@ import json
 from kafka import KafkaProducer
 
 # --- Cấu hình TMDb ---
-# LƯU Ý: Thay thế 'YOUR_API_KEY' bằng API Key thật của bạn
 TMDB_API_KEY = "84ce6d76ae217b1b2136214640c07f43"
 TMDB_BASE_URL = "https://api.themoviedb.org/3"
 POPULAR_MOVIES_ENDPOINT = f"{TMDB_BASE_URL}/movie/popular"
@@ -36,7 +35,7 @@ def produce_tmdb_data():
     print(f"Bắt đầu trích xuất dữ liệu từ TMDb và gửi đến Kafka Topic: {KAFKA_TOPIC}")
 
     try:
-        # Lấy dữ liệu 5 trang đầu tiên (có thể tùy chỉnh)
+        # Lấy dữ liệu 5 trang đầu tiên
         for page in range(1, 6):
             movies = get_popular_movies(page=page)
             print(f"--- Đã lấy {len(movies)} phim từ Trang {page} ---")
