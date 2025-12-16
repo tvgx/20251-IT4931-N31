@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: movie-producer
+  namespace: bigdata
+  labels:
+    app: movie-producer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: movie-producer
+  template:
+    metadata:
+      labels:
+        app: movie-producer
+    spec:
+      containers:
+      - name: spark
+        image: spark-bigdata:latest
+        imagePullPolicy: Never
+        command: ["python", "/opt/app/movie_producer.py"]
+        env:
+        - name: KAFKA_BOOTSTRAP
+          value: "kafka-cluster-kafka-bootstrap.bigdata.svc.cluster.local:9092"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "1Gi"
+            cpu: "600m"
+        volumeMounts:
+        - name: app-code
+          mountPath: /opt/app
+      volumes:
+      - name: app-code
+        hostPath:
+          path: /mounted_code
+          type: Directory

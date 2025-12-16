@@ -1,0 +1,30 @@
+apiVersion: psmdb.percona.com/v1
+kind: PerconaServerMongoDB
+metadata:
+  name: mycluster
+  namespace: bigdata
+spec:
+  image: percona/percona-server-mongodb:8.0   # ← ĐÚNG TAG TỒN TẠI & PULL NGON 100%
+  secrets:
+    users: mycluster-secrets
+  allowUnsafeConfigurations: true   # dev mode, size=1
+  updateStrategy: SmartUpdate
+  replsets:
+    - name: rs0
+      size: 1
+      volumeSpec:
+        persistentVolumeClaim:
+          resources:
+            requests:
+              storage: 8Gi
+  sharding:
+    enabled: true
+    configsvrReplSet:
+      size: 1
+      volumeSpec:
+        persistentVolumeClaim:
+          resources:
+            requests:
+              storage: 10Gi
+    mongos:
+      size: 1

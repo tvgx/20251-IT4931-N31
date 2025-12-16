@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: movie-consumer
+  namespace: bigdata
+  labels:
+    app: movie-consumer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: movie-consumer
+  template:
+    metadata:
+      labels:
+        app: movie-consumer
+    spec:
+      containers:
+      - name: spark
+        image: spark-bigdata:latest
+        imagePullPolicy: Never
+        command: ["python", "/opt/app/movie_consumer.py"]
+        env:
+        - name: KAFKA_BROKER1
+          value: "kafka-cluster-kafka-bootstrap.bigdata.svc.cluster.local:9092"
+        - name: MOVIE_TOPIC
+          value: "movie"
+        - name: ES_NODES
+          value: "elasticsearch-es-http.bigdata.svc.cluster.local"
+
+        - name: MASTER
+          value: "local[1]"
+
+        - name: CONNECTION_STRING
+          value: "mongodb://spark-user:spark-pass@mycluster-mongos.bigdata.svc.cluster.local:27017/BIGDATA?authSource=admin"
+
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "1Gi"
+            cpu: "600m"
+        volumeMounts:
+        - name: app-code
+          mountPath: /opt/app
+      volumes:
+      - name: app-code
+        hostPath:
+          path: /mounted_code
+          type: Directory
