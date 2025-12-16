@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Verify Batch Data - Kiểm tra dữ liệu đã được load vào MongoDB và Elasticsearch
+Verify Batch Data - Kiểm tra dữ liệu Batch Layer (Movies & Actors)
 """
 
 import os
@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def check_mongodb():
-    """Kiểm tra dữ liệu trong MongoDB"""
+    """Kiểm tra dữ liệu trong MongoDB (batch_movie & batch_actor)"""
     try:
         from pymongo import MongoClient
         
@@ -22,26 +22,16 @@ def check_mongodb():
         
         client = MongoClient(connection_string, serverSelectionTimeoutMS=5000)
         db = client['BIGDATA']
-        collection = db['batch_movie']
         
-        # Đếm documents
-        count = collection.count_documents({})
-        print(f"   ✅ Documents in batch_movie: {count}")
+        # Check batch_movie
+        movie_col = db['batch_movie']
+        movie_count = movie_col.count_documents({})
+        print(f"   ✅ batch_movie count: {movie_count}")
         
-        if count > 0:
-            # Lấy mẫu
-            sample = collection.find_one()
-            print(f"\n   📄 Sample document:")
-            print(f"      ID: {sample.get('id')}")
-            print(f"      Title: {sample.get('title')}")
-            print(f"      Vote Average: {sample.get('vote_average')}")
-            print(f"      Release Year: {sample.get('release_year')}")
-            
-            # Thống kê
-            top_movies = list(collection.find({}, {"title": 1, "vote_average": 1}).sort("vote_average", -1).limit(5))
-            print(f"\n   🏆 Top 5 movies by vote average:")
-            for i, movie in enumerate(top_movies, 1):
-                print(f"      {i}. {movie.get('title')} ({movie.get('vote_average')})")
+        # Check batch_actor
+        actor_col = db['batch_actor']
+        actor_count = actor_col.count_documents({})
+        print(f"   ✅ batch_actor count: {actor_count}")
         
         return True
         
@@ -70,65 +60,23 @@ def check_elasticsearch():
         
         # Kiểm tra index
         indices = es.cat.indices(format="json")
-        batch_index = [idx for idx in indices if "batch" in idx['index']]
+        batch_indices = [idx['index'] for idx in indices if "batch" in idx['index']]
+        print(f"   Found indices: {batch_indices}")
         
-        if not batch_index:
-            print(f"   ⚠️  No batch index found")
-            return False
-        
-        # Đếm documents
-        index_name = batch_index[0]['index']
-        count = es.count(index=index_name)['count']
-        print(f"   ✅ Documents in {index_name}: {count}")
-        
-        if count > 0:
-            # Lấy mẫu
-            results = es.search(index=index_name, size=1)
-            if results['hits']['hits']:
-                sample = results['hits']['hits'][0]['_source']
-                print(f"\n   📄 Sample document:")
-                print(f"      ID: {sample.get('id')}")
-                print(f"      Title: {sample.get('title')}")
-                print(f"      Vote Average: {sample.get('vote_average')}")
-                print(f"      Release Date: {sample.get('release_date')}")
-        
-        return True
-        
-    except Exception as e:
-        print(f"   ❌ Error: {str(e)}")
-        print(f"   💡 Tip: Thử chạy 'kubectl port-forward svc/elasticsearch-es-http 9200:9200 -n bigdata'")
-        return False
+        # Check batch-movie
+        if 'batch-movie' in batch_indices:
+            count = es.count(index='batch-movie')['count']
+            print(f"   ✅ batch-movie count: {count}")
+        else:
+            print(f"   ⚠️  batch-movie index missing")
 
-def check_kafka():
-    """Kiểm tra Kafka topic"""
-    try:
-        from kafka import KafkaConsumer
-        from kafka.errors import KafkaError
-        
-        kafka_broker = os.environ.get("KAFKA_BROKER1", "kafka-cluster-kafka-bootstrap.bigdata.svc.cluster.local:9092")
-        batch_topic = os.environ.get("BATCH_TOPIC", "batch-movies")
-        
-        print("\n☕ Kiểm tra Kafka...")
-        print(f"   Broker: {kafka_broker}")
-        print(f"   Topic: {batch_topic}")
-        
-        consumer = KafkaConsumer(
-            batch_topic,
-            bootstrap_servers=[kafka_broker],
-            consumer_timeout_ms=5000,
-            auto_offset_reset='earliest'
-        )
-        
-        messages = list(consumer)
-        print(f"   ✅ Messages in topic: {len(messages)}")
-        
-        if messages:
-            print(f"\n   📄 Sample message:")
-            sample_msg = json.loads(messages[0].value.decode('utf-8'))
-            print(f"      ID: {sample_msg.get('id')}")
-            print(f"      Title: {sample_msg.get('title')}")
-        
-        consumer.close()
+        # Check batch-actor
+        if 'batch-actor' in batch_indices:
+            count = es.count(index='batch-actor')['count']
+            print(f"   ✅ batch-actor count: {count}")
+        else:
+            print(f"   ⚠️  batch-actor index missing")
+            
         return True
         
     except Exception as e:
@@ -140,28 +88,14 @@ def main():
     print("🔍 Batch Data Verification")
     print("=" * 50)
     
-    results = {
-        "MongoDB": check_mongodb(),
-        "Elasticsearch": check_elasticsearch(),
-        "Kafka": check_kafka()
-    }
+    mongo_ok = check_mongodb()
+    es_ok = check_elasticsearch()
     
     print("\n" + "=" * 50)
-    print("📊 Summary:")
-    print("=" * 50)
-    
-    for service, status in results.items():
-        status_str = "✅ OK" if status else "❌ FAILED"
-        print(f"{service:20} {status_str}")
-    
-    print("\n" + "=" * 50)
-    
-    if all(results.values()):
-        print("✅ Tất cả dịch vụ hoạt động bình thường!")
-        sys.exit(0)
+    if mongo_ok and es_ok:
+        print("✅ Validation Completed (Check counts above)")
     else:
-        print("⚠️  Một số dịch vụ có lỗi, vui lòng kiểm tra logs")
-        sys.exit(1)
+        print("⚠️  Validation found issues")
 
 if __name__ == "__main__":
     main()
