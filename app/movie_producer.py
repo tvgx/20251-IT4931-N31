@@ -5,6 +5,7 @@ from schema import MOVIE_SCHEMA
 import os
 from dotenv import load_dotenv
 import time
+from datetime import datetime
 
 load_dotenv()
 
@@ -24,19 +25,46 @@ spark = SparkSession.builder \
 
 spark.sparkContext.setLogLevel("WARN")
 
-movie_db = MovieDB()
-page = 1
+# Initialize với 4 concurrent workers để tránh rate limit
+movie_db = MovieDB(max_workers=4)
 
-print("=== MOVIE PRODUCER STARTED - SENDING FOREVER ===")
+print("="*70)
+print("🚀 MOVIE PRODUCER STARTED - DIVIDE & CONQUER BY YEAR")
+print("="*70)
+
+# Strategy: Lấy từng năm để vượt qua limit 10k
+current_year = datetime.now().year
+years_to_fetch = list(range(current_year, 1974, -1))  # 2024, 2023, 2022, ..., 1975
+
+print(f"\n📅 Priority order: {current_year} → 1975")
+print(f"   Total years: {len(years_to_fetch)}")
+print(f"   First few years: {years_to_fetch[:5]}")
+print(f"   Last few years: {years_to_fetch[-5:]}\n")
+
+year_index = 0
+page_in_year = 1
 
 while True:
     try:
-        print(f"\nFetching page {page}...")
-        movies = movie_db.get_movies(page=page)
+        # Lấy năm hiện tại
+        year = years_to_fetch[year_index % len(years_to_fetch)]
+        
+        print(f"\n📅 Year: {year} | Page: {page_in_year}")
+        start_time = time.time()
+        
+        movies, total_pages = movie_db.get_movies_by_year(year=year, page=page_in_year)
+        fetch_time = time.time() - start_time
+        
         if not movies or len(movies) == 0:
-            print("No more data or rate limited. Resetting to page 1. Sleep 60s...")
-            time.sleep(60)
-            page = 1  # Reset page để bắt đầu từ đầu
+            print(f"   ✓ Year {year} complete (pages: {page_in_year-1})")
+            # Chuyển sang năm tiếp theo
+            year_index += 1
+            page_in_year = 1
+            
+            if year_index >= len(years_to_fetch):
+                print(f"\n✓ All years fetched! Resetting to 1975. Sleep 60s...")
+                year_index = 0
+                time.sleep(60)
             continue
 
         df = spark.createDataFrame(movies, schema=MOVIE_SCHEMA)
@@ -49,10 +77,23 @@ while True:
           .mode("append") \
           .save()
 
-        print(f"Sent {len(movies)} movies (page {page})")
-        page += 1
-        time.sleep(1.5)  # tránh rate limit TMDB
+        print(f"   ✓ Sent {len(movies)} movies in {fetch_time:.2f}s (page {page_in_year}/{total_pages})")
+        
+        # Nếu còn page, tiếp tục với year này
+        if page_in_year < total_pages:
+            page_in_year += 1
+        else:
+            # Sang năm tiếp theo
+            year_index += 1
+            page_in_year = 1
+            
+            if year_index >= len(years_to_fetch):
+                print(f"\n✓ All years fetched! Resetting to 1975. Sleep 60s...")
+                year_index = 0
+                time.sleep(60)
+        
+        time.sleep(0.5)  # Rate limit
 
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"❌ Error: {e}")
         time.sleep(10)
