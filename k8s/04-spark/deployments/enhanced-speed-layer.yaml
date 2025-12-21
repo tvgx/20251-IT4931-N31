@@ -1,0 +1,159 @@
+# =============================================================================
+# ENHANCED SPEED LAYER DEPLOYMENT
+# Đọc dữ liệu từ Kafka và ghi vào MongoDB (Serving Layer)
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: enhanced-speed-layer
+  namespace: bigdata
+  labels:
+    app: enhanced-speed-layer
+    layer: speed
+    architecture: lambda
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: enhanced-speed-layer
+  template:
+    metadata:
+      labels:
+        app: enhanced-speed-layer
+        layer: speed
+        architecture: lambda
+    spec:
+      containers:
+      - name: speed-layer
+        image: spark-bigdata:latest
+        imagePullPolicy: Never
+        command: ["python", "/opt/app/enhanced_speed_layer.py"]
+        env:
+        # Kafka Configuration (Data Ingestion)
+        - name: KAFKA_BROKER1
+          value: "kafka-cluster-kafka-bootstrap.bigdata.svc.cluster.local:9092"
+        - name: MOVIE_TOPIC
+          value: "movie"
+        # MongoDB Configuration (Serving Layer)
+        - name: CONNECTION_STRING
+          value: "mongodb://spark-user:spark-pass@mycluster-mongos.bigdata.svc.cluster.local:27017/BIGDATA?authSource=admin"
+        - name: MONGO_ENABLED
+          value: "true"
+        # Spark Configuration
+        - name: MASTER
+          value: "local[*]"
+        # Streaming Configuration
+        - name: WATERMARK_DELAY
+          value: "10 minutes"
+        - name: WINDOW_DURATION
+          value: "5 minutes"
+        - name: SLIDE_DURATION
+          value: "1 minute"
+        - name: TRIGGER_INTERVAL
+          value: "60 seconds"
+        - name: CHECKPOINT_DIR
+          value: "/tmp/checkpoint/speed_layer"
+        - name: MAX_RECORDS_PER_TRIGGER
+          value: "5000"
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1500m"
+        volumeMounts:
+        - name: app-code
+          mountPath: /opt/app
+        - name: checkpoint
+          mountPath: /tmp/checkpoint
+      volumes:
+      - name: app-code
+        hostPath:
+          path: /mounted_code
+          type: Directory
+      - name: checkpoint
+        emptyDir: {}
+      restartPolicy: Always
+---
+# =============================================================================
+# SPEED LAYER với Persistent Checkpoint (cho production)
+# =============================================================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: speed-layer-checkpoint-pvc
+  namespace: bigdata
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: enhanced-speed-layer-persistent
+  namespace: bigdata
+  labels:
+    app: enhanced-speed-layer-persistent
+    layer: speed
+    architecture: lambda
+spec:
+  replicas: 0  # Scale to 1 to enable
+  selector:
+    matchLabels:
+      app: enhanced-speed-layer-persistent
+  template:
+    metadata:
+      labels:
+        app: enhanced-speed-layer-persistent
+        layer: speed
+        architecture: lambda
+    spec:
+      containers:
+      - name: speed-layer
+        image: spark-bigdata:latest
+        imagePullPolicy: Never
+        command: ["python", "/opt/app/enhanced_speed_layer.py"]
+        env:
+        - name: KAFKA_BROKER1
+          value: "kafka-cluster-kafka-bootstrap.bigdata.svc.cluster.local:9092"
+        - name: MOVIE_TOPIC
+          value: "movie"
+        - name: CONNECTION_STRING
+          value: "mongodb://spark-user:spark-pass@mycluster-mongos.bigdata.svc.cluster.local:27017/BIGDATA?authSource=admin"
+        - name: MONGO_ENABLED
+          value: "true"
+        - name: MASTER
+          value: "local[*]"
+        - name: WATERMARK_DELAY
+          value: "10 minutes"
+        - name: WINDOW_DURATION
+          value: "5 minutes"
+        - name: TRIGGER_INTERVAL
+          value: "30 seconds"
+        - name: CHECKPOINT_DIR
+          value: "/checkpoint/speed_layer"
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1500m"
+        volumeMounts:
+        - name: app-code
+          mountPath: /opt/app
+        - name: checkpoint
+          mountPath: /checkpoint
+      volumes:
+      - name: app-code
+        hostPath:
+          path: /mounted_code
+          type: Directory
+      - name: checkpoint
+        persistentVolumeClaim:
+          claimName: speed-layer-checkpoint-pvc
+      restartPolicy: Always

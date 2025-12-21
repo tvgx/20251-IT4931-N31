@@ -1,10 +1,5 @@
-# movie_consumer.py - ADVANCED VERSION
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import (
-    from_json, col, year, to_date, when, expr, broadcast, 
-    avg, count, round as spark_round, max as spark_max, current_timestamp, udf
-)
-from pyspark.sql.types import StringType, DoubleType
+from pyspark.sql.functions import from_json, col, year, to_date, when, expr
 from schema import MOVIE_SCHEMA
 import os
 from dotenv import load_dotenv
