@@ -1,0 +1,32 @@
+# =============================================================================
+# LAMBDA ARCHITECTURE - Movie Analytics
+# Enhanced Python Dependencies
+# =============================================================================
+
+# PySpark (Processing Layer)
+pyspark==3.5.1
+
+# Database connectors (Serving Layer)
+pymongo==4.6.1
+
+# Kafka (Data Ingestion)
+kafka-python==2.0.2
+
+# Web framework (Serving Layer API)
+flask==3.0.0
+flask-cors==4.0.0
+
+# MinIO/S3 (Storage Layer)
+boto3==1.34.0
+botocore==1.34.0
+
+# Utilities
+python-dotenv==1.0.1
+requests==2.31.0
+urllib3==2.1.0
+
+# Data processing (optional, for local development)
+pandas>=2.1.4
+
+# HTTP retry (for crawler)
+tenacity==8.2.3

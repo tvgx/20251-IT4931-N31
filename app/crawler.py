@@ -8,7 +8,6 @@ import time
 
 KAFKA_BOOTSTRAP = os.getenv("KAFKA_BOOTSTRAP", "kafka-cluster-kafka-bootstrap.bigdata.svc.cluster.local:9092")
 MONGO_HOST = os.getenv("MONGO_HOST", "mycluster-mongos.bigdata.svc.cluster.local:27017")
-ELASTICSEARCH_HOST = os.getenv("ELASTICSEARCH_HOST", "elasticsearch-es-http.bigdata.svc.cluster.local:9200")
 
 class MovieDB:
     def __init__(self, max_workers=5) -> None:

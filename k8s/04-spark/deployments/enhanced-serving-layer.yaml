@@ -1,0 +1,112 @@
+# =============================================================================
+# ENHANCED SERVING LAYER DEPLOYMENT
+# REST API kết hợp Batch + Speed Views
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: serving-layer
+  namespace: bigdata
+  labels:
+    app: enhanced-serving-layer
+    layer: serving
+    architecture: lambda
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5000
+      targetPort: 5000
+      name: http
+  selector:
+    app: enhanced-serving-layer
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: enhanced-serving-layer
+  namespace: bigdata
+  labels:
+    app: enhanced-serving-layer
+    layer: serving
+    architecture: lambda
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: enhanced-serving-layer
+  template:
+    metadata:
+      labels:
+        app: enhanced-serving-layer
+        layer: serving
+        architecture: lambda
+    spec:
+      containers:
+      - name: serving-layer
+        image: spark-bigdata:latest
+        imagePullPolicy: Never
+        command: ["python", "/opt/app/enhanced_serving_layer.py"]
+        ports:
+        - containerPort: 5000
+        env:
+        # MongoDB Configuration
+        - name: CONNECTION_STRING
+          value: "mongodb://spark-user:spark-pass@mycluster-mongos.bigdata.svc.cluster.local:27017/BIGDATA?authSource=admin"
+        # Serving Configuration
+        - name: SERVING_PORT
+          value: "5000"
+        - name: CACHE_TTL_SECONDS
+          value: "60"
+        - name: DEBUG_MODE
+          value: "false"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        volumeMounts:
+        - name: app-code
+          mountPath: /opt/app
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 5000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 5000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+      volumes:
+      - name: app-code
+        hostPath:
+          path: /mounted_code
+          type: Directory
+      restartPolicy: Always
+---
+# =============================================================================
+# INGRESS cho Serving Layer (nếu có Ingress Controller)
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: serving-layer-ingress
+  namespace: bigdata
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - host: lambda-api.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: serving-layer
+            port:
+              number: 5000

@@ -1,0 +1,158 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: metabase
+  namespace: bigdata
+  labels:
+    app: metabase
+    layer: visualization
+    architecture: lambda
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3000
+      targetPort: 3000
+      name: http
+  selector:
+    app: metabase
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metabase
+  namespace: bigdata
+  labels:
+    app: metabase
+    layer: visualization
+    architecture: lambda
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: metabase
+  template:
+    metadata:
+      labels:
+        app: metabase
+        layer: visualization
+        architecture: lambda
+    spec:
+      containers:
+      - name: metabase
+        image: metabase/metabase:latest
+        ports:
+        - containerPort: 3000
+        env:
+        # Database configuration for Metabase metadata
+        - name: MB_DB_TYPE
+          value: "h2"
+        - name: MB_DB_FILE
+          value: "/metabase-data/metabase.db"
+        # Site configuration
+        - name: MB_SITE_NAME
+          value: "Lambda Architecture - Movie Analytics"
+        - name: MB_SITE_URL
+          value: "http://metabase.bigdata.svc.cluster.local:3000"
+        # Enable anonymous access for demo
+        - name: MB_ENABLE_PUBLIC_SHARING
+          value: "true"
+        - name: MB_ENABLE_EMBEDDING
+          value: "true"
+        # Timezone
+        - name: JAVA_TIMEZONE
+          value: "Asia/Ho_Chi_Minh"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        volumeMounts:
+        - name: metabase-data
+          mountPath: /metabase-data
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 60
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 120
+          periodSeconds: 30
+      volumes:
+      - name: metabase-data
+        emptyDir: {}
+      restartPolicy: Always
+---
+# =============================================================================
+# PERSISTENT VOLUME VERSION - Sử dụng khi cần lưu trữ lâu dài
+# =============================================================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: metabase-pvc
+  namespace: bigdata
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metabase-persistent
+  namespace: bigdata
+  labels:
+    app: metabase-persistent
+    layer: visualization
+    architecture: lambda
+spec:
+  replicas: 0  # Scale to 1 to enable
+  selector:
+    matchLabels:
+      app: metabase-persistent
+  template:
+    metadata:
+      labels:
+        app: metabase-persistent
+        layer: visualization
+    spec:
+      containers:
+      - name: metabase
+        image: metabase/metabase:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: MB_DB_TYPE
+          value: "h2"
+        - name: MB_DB_FILE
+          value: "/metabase-data/metabase.db"
+        - name: MB_SITE_NAME
+          value: "Lambda Architecture - Movie Analytics"
+        - name: MB_ENABLE_PUBLIC_SHARING
+          value: "true"
+        - name: MB_ENABLE_EMBEDDING
+          value: "true"
+        - name: JAVA_TIMEZONE
+          value: "Asia/Ho_Chi_Minh"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        volumeMounts:
+        - name: metabase-data
+          mountPath: /metabase-data
+      volumes:
+      - name: metabase-data
+        persistentVolumeClaim:
+          claimName: metabase-pvc
+      restartPolicy: Always
