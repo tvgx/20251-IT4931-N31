@@ -8,3 +8,5 @@ __pycache__/
 
 # Project specific
 *.log
+
+.early.coverage

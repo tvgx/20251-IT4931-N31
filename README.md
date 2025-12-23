@@ -30,60 +30,72 @@ pip install -r requirements.txt
 ```
 
 ### 2. Khởi động Kubernetes cluster và cài đặt các dịch vụ
-
+  
 ```bash
 # Khởi động Minikube (trên Windows)
 minikube start --driver=docker --cpus=8 --memory=7168mb --disk-size=40gb
-
+```
+```bash
 # Kiểm tra status
 minikube status
 kubectl cluster-info
-
+```
+```bash
 #Cài Helm repo
 helm repo add strimzi https://strimzi.io/charts/
 helm repo add percona https://percona.github.io/percona-helm-charts/
 helm repo add elastic https://helm.elastic.co
 helm repo update
-
+```
+```bash
 #Chạy trên một terminal khác và giữ nguyên terminal đó, chú ý thay bằng đường dẫn tới thư mục app của mình
 minikube mount E:\Bigdata\Test\IT4931-bigdata-Movie-processing\app:/mounted_code
-
+```
+```bash
 # Bật environment để Docker CLI trỏ vào Docker engine của Minikube
 minikube docker-env | Invoke-Expression
-
+```
+```bash
 #Build image trực tiếp trong cluster 
 minikube image build -t spark-bigdata:latest -f k8s/04-spark/Dockerfile .
 ```
 
 ### 3. Triển khai các dịch vụ trên Kubernetes
-
+   Copy và chạy từng khối 
 ```bash
 # Tạo namespace
 kubectl apply -f k8s/00-namespace.yaml
-
+```
+```bash
 # Kafka - Strimzi Operator
 helm install kafka strimzi/strimzi-kafka-operator -n bigdata --version 0.49.1 --wait
 kubectl apply -f k8s/01-kafka/kafka-cluster.yaml
 kubectl wait kafka/kafka-cluster --for=condition=Ready --timeout=600s -n bigdata
-
+```
+```bash
 # MongoDB - Percona Operator
 helm install psmdb percona/psmdb-operator -n bigdata --wait
 kubectl apply -f k8s/02-mongo/secret.yaml
 kubectl apply -f k8s/02-mongo/psmdb-cluster.yaml
 kubectl wait psmdb/mycluster --for=condition=Ready --timeout=900s -n bigdata
-
+```
+```bash
 # Spark producers & consumers
 kubectl apply -f k8s/04-spark/deployments/
-
+```
+```bash
 # MinIO
 kubectl apply -f k8s/05-minio/minio-standalone.yaml
-
+```
+```bash
 # Metabase
 kubectl apply -f k8s/06-metabase/metabase.yaml -n bigdata
-
+```
+```bash
 #Enable sharding MongoDB 
 kubectl exec -it mycluster-mongos-0 -n bigdata -- mongosh admin -u clusterAdmin -p 123456 --eval "sh.enableSharding('BIGDATA'); sh.shardCollection('BIGDATA.movie', { id: 'hashed' }); sh.shardCollection('BIGDATA.actor', { id: 'hashed' });"
-
+```
+```bash
 kubectl exec -it mycluster-mongos-0 -n bigdata -- mongosh admin -u userAdmin -p 123456 --eval "db.createUser({ user: 'spark-user', pwd: 'spark-pass', roles: [{ role: 'readWrite', db: 'BIGDATA' }], mechanisms: ['SCRAM-SHA-1', 'SCRAM-SHA-256'] })"
 ```
 
@@ -102,30 +114,32 @@ Mở các terminal riêng biệt và chạy các component:
 # Terminal 1: Data Ingestion Producer
 kubectl port-forward svc/mycluster-mongos 27018:27017 -n bigdata
 # Truy cập: mongodb://localhost:27018
-
+```
+```bash
 # Terminal 2: MinIO Console
 kubectl port-forward svc/minio 9001:9001 -n bigdata
 # Truy cập: http://localhost:9001
-
+```
+```bash
 
 # Terminal 3: Serving Layer API
 kubectl port-forward svc/serving-layer 5000:5000 -n bigdata
 # Truy cập: http://localhost:5000
 
-
+```
+```bash
 # Terminal 4: Metabase Dashboard
 kubectl port-forward svc/metabase 3000:3000 -n bigdata
 # Truy cập: http://localhost:3000
-
+```
+```bash
 # Terminal 5: Kafka (nếu cần)
 kubectl port-forward svc/kafka-cluster-kafka-bootstrap 9092:9092 -n bigdata
-
+```
+```bash
 #Truy cập Kibana
 minikube service kibana-kb-http -n bigdata --url
 #Lệnh trên sẽ in ra URL kiểu http://192.168.49.2:xxxxx → mở browser 
-
-
-
 ```
 
 ### 6. Truy cập các dịch vụ
@@ -175,8 +189,10 @@ kubectl rollout restart deployment <deployment-name> -n bigdata
 ### Xóa và tái tạo cluster
 
 ```bash
-minikube delete
-minikube start --driver=docker
+# Dùng trong trường hợp muốn giải phóng toàn bộ dung lượng được sử dụng
+minikube stop
+minikube delete --all --purge
+wsl --shutdown
 ```
 
 ## Phát triển local
