@@ -49,7 +49,8 @@ helm repo update
 ```
 ```bash
 #Chạy trên một terminal khác và giữ nguyên terminal đó, chú ý thay bằng đường dẫn tới thư mục app của mình
-minikube mount E:\Bigdata\Test\IT4931-bigdata-Movie-processing\app:/mounted_code
+minikube mount < Path-to-your-app >:/mounted_code
+# Ví dụ: minikube mount E:\Bigdata\Test\IT4931-bigdata-Movie-processing\app:/mounted_code
 ```
 ```bash
 # Bật environment để Docker CLI trỏ vào Docker engine của Minikube
