@@ -1,0 +1,207 @@
+# ENHANCED BATCH LAYER DEPLOYMENT với MinIO
+# Đọc dữ liệu từ MinIO (Master Dataset) và ghi vào MongoDB (Serving Layer)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: enhanced-batch-layer
+  namespace: bigdata
+  labels:
+    app: enhanced-batch-layer
+    layer: batch
+    architecture: lambda
+    storage: minio
+spec:
+  replicas: 0  # Set to 1 to enable continuous mode
+  selector:
+    matchLabels:
+      app: enhanced-batch-layer
+  template:
+    metadata:
+      labels:
+        app: enhanced-batch-layer
+        layer: batch
+        architecture: lambda
+        storage: minio
+    spec:
+      containers:
+      - name: batch-layer
+        image: spark-bigdata:latest
+        imagePullPolicy: Never
+        command: ["python", "/opt/app/enhanced_batch_layer.py"]
+        env:
+        # MongoDB Configuration (Serving Layer)
+        - name: CONNECTION_STRING
+          value: "mongodb://spark-user:spark-pass@mycluster-mongos.bigdata.svc.cluster.local:27017/BIGDATA?authSource=admin"
+        - name: MONGO_ENABLED
+          value: "true"
+        # Spark Configuration
+        - name: MASTER
+          value: "local[*]"
+        # MinIO Configuration (Master Dataset)
+        - name: MINIO_ENABLED
+          value: "true"
+        - name: MINIO_ENDPOINT
+          value: "http://minio.bigdata.svc.cluster.local:9000"
+        - name: MINIO_ACCESS_KEY
+          value: "admin"
+        - name: MINIO_SECRET_KEY
+          value: "password123"
+        - name: MINIO_BUCKET
+          value: "datalake"
+        - name: MINIO_CSV_FILE
+          value: "tmdb.csv"
+        # Performance Tuning
+        - name: SHUFFLE_PARTITIONS
+          value: "100"
+        - name: BROADCAST_THRESHOLD
+          value: "10485760"
+        # Legacy CSV_PATH (fallback when MINIO_ENABLED=false)
+        - name: CSV_PATH
+          value: "/data/tmdb.csv"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "2000m"
+        volumeMounts:
+        - name: app-code
+          mountPath: /opt/app
+      volumes:
+      - name: app-code
+        hostPath:
+          path: /mounted_code
+          type: Directory
+      restartPolicy: Always
+---
+# JOB Version - Chạy 1 lần rồi kết thúc (Recommended for batch processing)
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: enhanced-batch-job
+  namespace: bigdata
+  labels:
+    app: enhanced-batch-job
+    layer: batch
+    architecture: lambda
+    storage: minio
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 3600  # Auto cleanup after 1 hour
+  template:
+    metadata:
+      labels:
+        app: enhanced-batch-job
+        layer: batch
+        storage: minio
+    spec:
+      containers:
+      - name: batch-layer
+        image: spark-bigdata:latest
+        imagePullPolicy: Never
+        command: ["python", "/opt/app/enhanced_batch_layer.py"]
+        env:
+        - name: CONNECTION_STRING
+          value: "mongodb://spark-user:spark-pass@mycluster-mongos.bigdata.svc.cluster.local:27017/BIGDATA?authSource=admin"
+        - name: MONGO_ENABLED
+          value: "true"
+        - name: MASTER
+          value: "local[*]"
+        - name: MINIO_ENABLED
+          value: "true"
+        - name: MINIO_ENDPOINT
+          value: "http://minio.bigdata.svc.cluster.local:9000"
+        - name: MINIO_ACCESS_KEY
+          value: "admin"
+        - name: MINIO_SECRET_KEY
+          value: "password123"
+        - name: MINIO_BUCKET
+          value: "datalake"
+        - name: MINIO_CSV_FILE
+          value: "tmdb.csv"
+        - name: SHUFFLE_PARTITIONS
+          value: "100"
+        - name: CSV_PATH
+          value: "/data/tmdb.csv"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "2000m"
+        volumeMounts:
+        - name: app-code
+          mountPath: /opt/app
+      volumes:
+      - name: app-code
+        hostPath:
+          path: /mounted_code
+          type: Directory
+      restartPolicy: Never
+---
+# CRONJOB Version - Chạy định kỳ (e.g., mỗi 6 giờ)
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: enhanced-batch-cronjob
+  namespace: bigdata
+  labels:
+    app: enhanced-batch-cronjob
+    layer: batch
+    architecture: lambda
+spec:
+  schedule: "0 */6 * * *"  # Every 6 hours
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app: enhanced-batch-cronjob
+            layer: batch
+        spec:
+          containers:
+          - name: batch-layer
+            image: spark-bigdata:latest
+            imagePullPolicy: Never
+            command: ["python", "/opt/app/enhanced_batch_layer.py"]
+            env:
+            - name: CONNECTION_STRING
+              value: "mongodb://spark-user:spark-pass@mycluster-mongos.bigdata.svc.cluster.local:27017/BIGDATA?authSource=admin"
+            - name: MONGO_ENABLED
+              value: "true"
+            - name: MASTER
+              value: "local[*]"
+            - name: MINIO_ENABLED
+              value: "true"
+            - name: MINIO_ENDPOINT
+              value: "http://minio.bigdata.svc.cluster.local:9000"
+            - name: MINIO_ACCESS_KEY
+              value: "admin"
+            - name: MINIO_SECRET_KEY
+              value: "password123"
+            - name: MINIO_BUCKET
+              value: "datalake"
+            - name: MINIO_CSV_FILE
+              value: "tmdb.csv"
+            resources:
+              requests:
+                memory: "1Gi"
+                cpu: "500m"
+              limits:
+                memory: "2Gi"
+                cpu: "2000m"
+            volumeMounts:
+            - name: app-code
+              mountPath: /opt/app
+          volumes:
+          - name: app-code
+            hostPath:
+              path: /mounted_code
+              type: Directory
+          restartPolicy: Never

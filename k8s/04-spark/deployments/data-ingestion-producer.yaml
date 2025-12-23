@@ -1,0 +1,131 @@
+# DATA INGESTION PRODUCER DEPLOYMENT
+# Thu thập dữ liệu từ TheMovieDB API và ghi vào Kafka + MinIO
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: data-ingestion-producer
+  namespace: bigdata
+  labels:
+    app: data-ingestion-producer
+    layer: ingestion
+    architecture: lambda
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: data-ingestion-producer
+  template:
+    metadata:
+      labels:
+        app: data-ingestion-producer
+        layer: ingestion
+        architecture: lambda
+    spec:
+      containers:
+      - name: ingestion-producer
+        image: spark-bigdata:latest
+        imagePullPolicy: Never
+        # Dùng simple version không có Spark để tiết kiệm tài nguyên
+        command: ["python", "/opt/app/simple_data_ingestion.py"]
+        env:
+        # Kafka Configuration (Data Ingestion - Hot Path)
+        - name: KAFKA_BROKER1
+          value: "kafka-cluster-kafka-bootstrap.bigdata.svc.cluster.local:9092"
+        - name: MOVIE_TOPIC
+          value: "movie"
+        # MinIO Configuration (Storage Layer - Cold Path)
+        - name: MINIO_ENABLED
+          value: "true"
+        - name: MINIO_ENDPOINT
+          value: "http://minio.bigdata.svc.cluster.local:9000"
+        - name: MINIO_ACCESS_KEY
+          value: "admin"
+        - name: MINIO_SECRET_KEY
+          value: "password123"
+        - name: MINIO_BUCKET
+          value: "datalake"
+        # Ingestion Configuration
+        - name: BATCH_SIZE
+          value: "100"
+        - name: YEARS_TO_FETCH
+          value: "2025,2024,2023,2022,2021,2020,2019,2018,2017,2016,2015,2014,2013,2012,2011,2010"
+        - name: CONTINUOUS_MODE
+          value: "true"
+        - name: FETCH_INTERVAL
+          value: "30"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "300m"
+        volumeMounts:
+        - name: app-code
+          mountPath: /opt/app
+      volumes:
+      - name: app-code
+        hostPath:
+          path: /mounted_code
+          type: Directory
+      restartPolicy: Always
+---
+# JOB Version - Thu thập 1 lần
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: data-ingestion-job
+  namespace: bigdata
+  labels:
+    app: data-ingestion-job
+    layer: ingestion
+    architecture: lambda
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: data-ingestion-job
+        layer: ingestion
+    spec:
+      containers:
+      - name: ingestion-producer
+        image: spark-bigdata:latest
+        imagePullPolicy: Never
+        command: ["python", "/opt/app/simple_data_ingestion.py"]
+        env:
+        - name: KAFKA_BROKER1
+          value: "kafka-cluster-kafka-bootstrap.bigdata.svc.cluster.local:9092"
+        - name: MOVIE_TOPIC
+          value: "movie"
+        - name: MINIO_ENABLED
+          value: "true"
+        - name: MINIO_ENDPOINT
+          value: "http://minio.bigdata.svc.cluster.local:9000"
+        - name: MINIO_ACCESS_KEY
+          value: "admin"
+        - name: MINIO_SECRET_KEY
+          value: "password123"
+        - name: MINIO_BUCKET
+          value: "datalake"
+        - name: YEARS_TO_FETCH
+          value: "2024,2023"
+        - name: CONTINUOUS_MODE
+          value: "false"  # Run once then exit
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "300m"
+        volumeMounts:
+        - name: app-code
+          mountPath: /opt/app
+      volumes:
+      - name: app-code
+        hostPath:
+          path: /mounted_code
+          type: Directory
+      restartPolicy: Never
