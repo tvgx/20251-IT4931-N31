@@ -1,37 +1,3 @@
-#!/usr/bin/env python3
-"""
-Enhanced Batch Layer - Lambda Architecture
-Xử lý dữ liệu batch từ MinIO (Master Dataset) và lưu vào MongoDB (Serving Layer)
-
-=============================================================================
-ADVANCED SPARK FEATURES IMPLEMENTED:
-=============================================================================
-1. Complex Aggregations:
-   - Window Functions: rank, row_number, dense_rank, lag, lead, ntile
-   - Pivot and Unpivot Operations
-   - Custom Aggregation Functions (UDAF-like)
-   - Advanced aggregate functions: percentile, stddev, variance
-
-2. Advanced Transformations:
-   - Multiple stages of transformations
-   - Chaining complex operations
-   - Custom UDFs for business logic
-
-3. Join Operations:
-   - Broadcast joins for unbalanced datasets
-   - Sort-merge joins for large-scale data
-   - Multiple joins optimization
-   - Self-joins for comparison
-
-4. Performance Optimization:
-   - Partition pruning and bucketing
-   - Caching and persistence strategies (MEMORY_AND_DISK, MEMORY_ONLY)
-   - Query optimization with explain()
-   - Adaptive Query Execution (AQE)
-   - Coalesce and repartition strategies
-=============================================================================
-"""
-
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import (
     col, year, to_date, when, avg, count, sum as spark_sum,
@@ -69,9 +35,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# =============================================================================
 # ENVIRONMENT CONFIGURATION
-# =============================================================================
 MASTER = os.environ.get("MASTER", "local[*]")
 CONNECTION_STRING = os.environ.get("CONNECTION_STRING", "mongodb://localhost:27017")
 MONGO_ENABLED = os.environ.get("MONGO_ENABLED", "true").lower() == "true"
@@ -106,9 +70,7 @@ print(f"🔧 Shuffle Partitions: {SHUFFLE_PARTITIONS}")
 print(f"🔧 Broadcast Threshold: {BROADCAST_THRESHOLD} bytes")
 print("=" * 80)
 
-# =============================================================================
 # SPARK SESSION WITH OPTIMIZATION
-# =============================================================================
 spark_builder = SparkSession.builder \
     .appName("EnhancedBatchLayer-LambdaArchitecture") \
     .master(MASTER) \
@@ -139,9 +101,7 @@ if MINIO_ENABLED:
 spark = spark_builder.getOrCreate()
 spark.sparkContext.setLogLevel("WARN")
 
-# =============================================================================
 # CUSTOM USER DEFINED FUNCTIONS (UDFs)
-# =============================================================================
 from pyspark.sql.functions import udf, pandas_udf
 from pyspark.sql.types import ArrayType
 
@@ -275,9 +235,7 @@ def get_primary_genre(genres_str):
     genres = [g.strip() for g in genres_str.split(",") if g.strip()]
     return genres[0] if genres else "Unknown"
 
-# =============================================================================
 # SCHEMA DEFINITION
-# =============================================================================
 TMDB_SCHEMA = StructType([
     StructField("id", IntegerType(), True),
     StructField("title", StringType(), True),
@@ -311,9 +269,7 @@ TMDB_SCHEMA = StructType([
 ])
 
 
-# =============================================================================
 # LOOKUP TABLES FOR BROADCAST JOINS
-# =============================================================================
 def create_genre_lookup():
     """Create genre lookup table for broadcast join"""
     genre_data = [
@@ -379,9 +335,7 @@ def create_decade_lookup():
     )
 
 
-# =============================================================================
 # DATA LOADING WITH PARTITION PRUNING
-# =============================================================================
 def load_and_process_data():
     """Load CSV và xử lý dữ liệu với advanced transformations"""
     print("\n" + "=" * 80)
@@ -408,17 +362,13 @@ def load_and_process_data():
     total_records = raw_df.count()
     print(f"   ✅ Loaded {total_records} raw records")
     
-    # ==========================================================================
     # CACHING STRATEGY: Cache raw data for multiple transformations
-    # ==========================================================================
     print("\n💾 CACHING: Persisting raw data (MEMORY_AND_DISK)...")
     raw_df.persist(StorageLevel.MEMORY_AND_DISK)
     raw_df.count()  # Trigger caching
     print("   ✅ Raw data cached")
     
-    # ==========================================================================
     # STAGE 2: MULTI-STAGE TRANSFORMATIONS
-    # ==========================================================================
     print("\n" + "=" * 80)
     print("🔄 STAGE 2: MULTI-STAGE TRANSFORMATIONS")
     print("=" * 80)
@@ -503,9 +453,7 @@ def load_and_process_data():
         .filter(col("title").isNotNull()) \
         .filter(col("title") != "")
     
-    # ==========================================================================
     # PARTITION STRATEGY: Repartition by year for better parallelism
-    # ==========================================================================
     print("\n📊 PARTITIONING: Repartitioning by release_year...")
     partitioned_df = clean_df.repartition(col("release_year"))
     
@@ -516,18 +464,14 @@ def load_and_process_data():
     clean_count = partitioned_df.count()
     print(f"   ✅ Clean records: {clean_count}")
     
-    # ==========================================================================
     # QUERY OPTIMIZATION: Show execution plan
-    # ==========================================================================
     print("\n📋 QUERY EXECUTION PLAN (Optimized):")
     partitioned_df.explain(mode="formatted")
     
     return partitioned_df
 
 
-# =============================================================================
 # BROADCAST JOIN OPERATIONS
-# =============================================================================
 def perform_broadcast_joins(movies_df):
     """
     Perform BROADCAST JOINs with lookup tables
@@ -598,9 +542,7 @@ def perform_broadcast_joins(movies_df):
     }
 
 
-# =============================================================================
 # SELF-JOIN FOR MOVIE COMPARISONS
-# =============================================================================
 def perform_self_join_analysis(movies_df):
     """
     Perform SELF-JOIN for comparing movies within same year/genre
@@ -654,9 +596,7 @@ def perform_self_join_analysis(movies_df):
     return similar_movies
 
 
-# =============================================================================
 # COMPLEX WINDOW FUNCTION ANALYTICS
-# =============================================================================
 def create_window_analytics(df):
     """
     Create advanced analytics using Window Functions
@@ -669,9 +609,7 @@ def create_window_analytics(df):
     print("📊 STAGE 5: WINDOW FUNCTION ANALYTICS")
     print("=" * 80)
     
-    # ==========================================================================
     # 5.1: GENRE ANALYTICS with Window Functions
-    # ==========================================================================
     print("   📈 5.1: Genre Analytics with Rankings...")
     genre_exploded = df \
         .withColumn("genre", explode(split(col("genres"), ", "))) \
@@ -720,9 +658,7 @@ def create_window_analytics(df):
     ).withColumn("batch_processed_at", current_timestamp()) \
      .withColumn("layer", lit("batch"))
     
-    # ==========================================================================
     # 5.2: YEAR ANALYTICS with LAG/LEAD (Time Series Analysis)
-    # ==========================================================================
     print("   📈 5.2: Year Analytics with LAG/LEAD...")
     year_base_stats = df.filter(col("release_year").isNotNull()).groupBy("release_year").agg(
         count("*").alias("movie_count"),
@@ -767,9 +703,7 @@ def create_window_analytics(df):
         .withColumn("batch_processed_at", current_timestamp()) \
         .withColumn("layer", lit("batch"))
     
-    # ==========================================================================
     # 5.3: DIRECTOR ANALYTICS with NTILE
-    # ==========================================================================
     print("   📈 5.3: Director Analytics with NTILE...")
     director_exploded = df \
         .withColumn("director", explode(split(col("directors"), ", "))) \
@@ -809,9 +743,7 @@ def create_window_analytics(df):
         .withColumn("batch_processed_at", current_timestamp()) \
         .withColumn("layer", lit("batch"))
     
-    # ==========================================================================
     # 5.4: LANGUAGE ANALYTICS
-    # ==========================================================================
     print("   📈 5.4: Language Analytics...")
     language_window = Window.orderBy(desc("movie_count"))
     
@@ -831,9 +763,7 @@ def create_window_analytics(df):
      .withColumn("batch_processed_at", current_timestamp()) \
      .withColumn("layer", lit("batch"))
     
-    # ==========================================================================
     # 5.5: TOP MOVIES with Global Rankings
-    # ==========================================================================
     print("   📈 5.5: Top Movies with Global Rankings...")
     global_rating_window = Window.orderBy(desc("vote_average"), desc("vote_count"))
     global_popularity_window = Window.orderBy(desc("popularity"))
@@ -868,9 +798,7 @@ def create_window_analytics(df):
     }
 
 
-# =============================================================================
 # PIVOT AND UNPIVOT OPERATIONS
-# =============================================================================
 def create_pivot_tables(df):
     """
     Create PIVOT tables for cross-tabulation analysis
@@ -879,9 +807,7 @@ def create_pivot_tables(df):
     print("📊 STAGE 6: PIVOT TABLES")
     print("=" * 80)
     
-    # ==========================================================================
     # 6.1: Decade x Rating Category (Movie Count)
-    # ==========================================================================
     print("   📈 6.1: Decade x Rating Category Pivot...")
     decade_rating_pivot = df \
         .filter(col("decade").isNotNull()) \
@@ -896,9 +822,7 @@ def create_pivot_tables(df):
         .withColumn("batch_processed_at", current_timestamp()) \
         .withColumn("layer", lit("batch"))
     
-    # ==========================================================================
     # 6.2: Quarter x Budget Category (Avg Revenue in Millions)
-    # ==========================================================================
     print("   📈 6.2: Quarter x Budget Category Pivot...")
     quarter_budget_pivot = df \
         .filter(col("release_quarter").isNotNull()) \
@@ -913,9 +837,7 @@ def create_pivot_tables(df):
         .withColumn("batch_processed_at", current_timestamp()) \
         .withColumn("layer", lit("batch"))
     
-    # ==========================================================================
     # 6.3: Year x Primary Genre (Movie Count)
-    # ==========================================================================
     print("   📈 6.3: Year x Primary Genre Pivot...")
     # Get top 10 genres
     top_genres = df.groupBy("primary_genre").count() \
@@ -933,9 +855,7 @@ def create_pivot_tables(df):
         .withColumn("batch_processed_at", current_timestamp()) \
         .withColumn("layer", lit("batch"))
     
-    # ==========================================================================
     # 6.4: Language x Decade (Average Rating)
-    # ==========================================================================
     print("   📈 6.4: Language x Decade Pivot...")
     # Get top 10 languages
     top_languages = df.groupBy("original_language").count() \
@@ -953,9 +873,7 @@ def create_pivot_tables(df):
         .withColumn("batch_processed_at", current_timestamp()) \
         .withColumn("layer", lit("batch"))
     
-    # ==========================================================================
     # 6.5: UNPIVOT Example - Convert Pivot back to long format
-    # ==========================================================================
     print("   📈 6.5: UNPIVOT example...")
     # Create a smaller pivot to unpivot
     sample_pivot = df.filter(col("decade").isNotNull()) \
@@ -985,9 +903,7 @@ def create_pivot_tables(df):
     }
 
 
-# =============================================================================
 # SAVE TO MONGODB (SERVING LAYER)
-# =============================================================================
 def save_to_mongodb(df, collection_name, id_field=None):
     """Lưu DataFrame vào MongoDB Serving Layer"""
     if not MONGO_ENABLED:
@@ -1012,9 +928,7 @@ def save_to_mongodb(df, collection_name, id_field=None):
         return False
 
 
-# =============================================================================
 # MAIN BATCH LAYER EXECUTION
-# =============================================================================
 def run_batch_layer():
     """Main function to run enhanced batch layer"""
     print("\n" + "=" * 80)
@@ -1037,9 +951,7 @@ def run_batch_layer():
         # Stage 6: Pivot Tables
         pivot_tables = create_pivot_tables(movies_df)
         
-        # ==========================================================================
         # STAGE 7: SAVE TO MONGODB (SERVING LAYER)
-        # ==========================================================================
         print("\n" + "=" * 80)
         print("💾 STAGE 7: SAVING TO MONGODB (SERVING LAYER)")
         print("=" * 80)
@@ -1069,16 +981,12 @@ def run_batch_layer():
         save_to_mongodb(join_results["decade_enriched"], "batch_decade_enriched", "id")
         save_to_mongodb(similar_movies, "batch_similar_movies")
         
-        # ==========================================================================
         # CLEANUP
-        # ==========================================================================
         print("\n🧹 Cleaning up cached data...")
         movies_df.unpersist()
         print("   ✅ Cache cleared")
         
-        # ==========================================================================
         # SUMMARY
-        # ==========================================================================
         print("\n" + "=" * 80)
         print("✅ ENHANCED BATCH LAYER COMPLETED!")
         print("=" * 80)

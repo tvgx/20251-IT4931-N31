@@ -1,7 +1,5 @@
-# =============================================================================
 # DATA INGESTION PRODUCER DEPLOYMENT
 # Thu thập dữ liệu từ TheMovieDB API và ghi vào Kafka + MinIO
-# =============================================================================
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -72,9 +70,7 @@ spec:
           type: Directory
       restartPolicy: Always
 ---
-# =============================================================================
 # JOB Version - Thu thập 1 lần
-# =============================================================================
 apiVersion: batch/v1
 kind: Job
 metadata:

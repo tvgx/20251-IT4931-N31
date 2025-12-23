@@ -1,7 +1,5 @@
-# =============================================================================
 # ENHANCED SERVING LAYER DEPLOYMENT
 # REST API kết hợp Batch + Speed Views
-# =============================================================================
 apiVersion: v1
 kind: Service
 metadata:
@@ -88,9 +86,7 @@ spec:
           type: Directory
       restartPolicy: Always
 ---
-# =============================================================================
-# INGRESS cho Serving Layer (nếu có Ingress Controller)
-# =============================================================================
+# INGRESS cho Serving Layer
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

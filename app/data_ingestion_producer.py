@@ -1,15 +1,3 @@
-#!/usr/bin/env python3
-"""
-Data Ingestion Layer - Lambda Architecture
-Thu thập dữ liệu từ TheMovieDB và lưu vào:
-1. Kafka (Message Queue) - Dữ liệu "nóng" cho Speed Layer
-2. MinIO (Object Storage) - Master Dataset cho Batch Layer
-
-Kiến trúc:
-- Data Source: Crawler từ themoviedb
-- Data Ingestion: Kafka + MinIO
-"""
-
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import (
     col, current_timestamp, lit, to_json, struct, 
@@ -385,16 +373,12 @@ def run_ingestion():
             
             batch_count += 1
             
-            # ==========================================================================
             # 1. SEND TO KAFKA (Hot Path - cho Speed Layer)
-            # ==========================================================================
             kafka_count = send_to_kafka(spark, movies)
             if kafka_count > 0:
                 print(f"   ✅ Kafka: Sent {kafka_count} movies")
             
-            # ==========================================================================
             # 2. SAVE TO MINIO (Cold Path - cho Batch Layer)
-            # ==========================================================================
             if minio_client:
                 # Save raw JSON for archival
                 json_filename = f"raw/movies/{year}/page_{page_in_year}.json"

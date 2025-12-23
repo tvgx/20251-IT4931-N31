@@ -1,20 +1,3 @@
-#!/usr/bin/env python3
-"""
-Enhanced Serving Layer - Lambda Architecture
-Kết hợp kết quả từ Batch Layer và Speed Layer để phục vụ queries
-
-=============================================================================
-FEATURES:
-=============================================================================
-1. Merge Batch + Speed Views với ưu tiên dữ liệu real-time
-2. RESTful API cho dashboard và applications
-3. Caching với TTL cho performance
-4. Aggregation endpoints cho analytics
-5. Health check và monitoring
-6. Pagination và filtering support
-=============================================================================
-"""
-
 from pymongo import MongoClient
 from flask import Flask, jsonify, request, Response
 from flask_cors import CORS
@@ -28,9 +11,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# =============================================================================
 # ENVIRONMENT CONFIGURATION
-# =============================================================================
 CONNECTION_STRING = os.environ.get("CONNECTION_STRING", "mongodb://localhost:27017")
 SERVING_PORT = int(os.environ.get("SERVING_PORT", "5000"))
 CACHE_TTL_SECONDS = int(os.environ.get("CACHE_TTL_SECONDS", "60"))
@@ -45,9 +26,7 @@ print(f"⏱️  Cache TTL: {CACHE_TTL_SECONDS}s")
 print(f"🔧 Debug Mode: {DEBUG_MODE}")
 print("=" * 80)
 
-# =============================================================================
 # FLASK APP INITIALIZATION
-# =============================================================================
 app = Flask(__name__)
 CORS(app)  # Enable CORS for Metabase and other dashboards
 
@@ -60,9 +39,7 @@ cache = {}
 cache_timestamps = {}
 
 
-# =============================================================================
 # CACHING DECORATOR
-# =============================================================================
 def cached(ttl_seconds=None):
     """Simple TTL cache decorator"""
     def decorator(f):
@@ -86,9 +63,7 @@ def cached(ttl_seconds=None):
     return decorator
 
 
-# =============================================================================
 # HELPER FUNCTIONS
-# =============================================================================
 def merge_batch_speed(batch_data, speed_data, key_field):
     """
     Merge data từ Batch Layer và Speed Layer
@@ -216,9 +191,7 @@ def paginate(data, page=1, per_page=20):
     }
 
 
-# =============================================================================
 # API ENDPOINTS
-# =============================================================================
 
 @app.route('/')
 def home():
@@ -318,9 +291,7 @@ def metrics():
         return jsonify({"error": str(e)}), 500
 
 
-# =============================================================================
 # MOVIES ENDPOINTS
-# =============================================================================
 
 @app.route('/api/movies')
 def get_movies():
@@ -463,9 +434,7 @@ def get_movie(movie_id):
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-# =============================================================================
 # STATISTICS ENDPOINTS
-# =============================================================================
 
 @app.route('/api/stats/genres')
 @cached(ttl_seconds=60)
@@ -592,9 +561,7 @@ def get_director_stats():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-# =============================================================================
 # RANKINGS ENDPOINTS
-# =============================================================================
 
 @app.route('/api/top/movies')
 @cached(ttl_seconds=60)
@@ -680,9 +647,7 @@ def get_top_popular():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-# =============================================================================
 # ANALYTICS ENDPOINTS (PIVOT TABLES)
-# =============================================================================
 
 @app.route('/api/analytics/decade-rating')
 @cached(ttl_seconds=300)
@@ -774,9 +739,7 @@ def get_trends():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-# =============================================================================
 # LAMBDA ARCHITECTURE STATUS
-# =============================================================================
 
 @app.route('/api/lambda/status')
 def lambda_status():
@@ -884,9 +847,7 @@ def list_collections():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-# =============================================================================
 # METABASE-FRIENDLY ENDPOINTS (Raw JSON for visualization)
-# =============================================================================
 
 @app.route('/api/raw/genres')
 def raw_genres():
@@ -928,9 +889,7 @@ def raw_movies():
         return jsonify({"error": str(e)}), 500
 
 
-# =============================================================================
 # ERROR HANDLERS
-# =============================================================================
 
 @app.errorhandler(404)
 def not_found(error):
@@ -950,9 +909,7 @@ def internal_error(error):
     }), 500
 
 
-# =============================================================================
 # MAIN
-# =============================================================================
 
 def run_serving_layer():
     """Main function to run serving layer"""
