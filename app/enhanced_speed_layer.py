@@ -1,42 +1,4 @@
 #!/usr/bin/env python3
-"""
-Enhanced Speed Layer - Lambda Architecture
-Xử lý dữ liệu real-time từ Kafka và cập nhật MongoDB (Serving Layer)
-
-=============================================================================
-ADVANCED STREAMING FEATURES IMPLEMENTED:
-=============================================================================
-1. Structured Streaming:
-   - Multiple output modes (append, update, complete)
-   - Various trigger types (processingTime, continuous)
-
-2. Watermarking and Late Data Handling:
-   - Configurable watermark delay
-   - Late data tolerance
-   - Event time processing
-
-3. State Management:
-   - Stateful aggregations
-   - MapGroupsWithState for custom state logic
-   - State store configuration
-
-4. Window-based Aggregations:
-   - Tumbling windows
-   - Sliding windows
-   - Session windows (conceptual)
-
-5. Exactly-once Processing:
-   - Checkpointing
-   - Idempotent writes (upsert operations)
-   - Transaction support
-
-6. Complex Stream Processing:
-   - Stream-stream joins (conceptual)
-   - Stream deduplication
-   - Rate limiting
-=============================================================================
-"""
-
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import (
     col, from_json, window, avg, count, sum as spark_sum,
@@ -72,9 +34,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# =============================================================================
 # ENVIRONMENT CONFIGURATION
-# =============================================================================
 MASTER = os.environ.get("MASTER", "local[*]")
 KAFKA_BROKER1 = os.environ.get("KAFKA_BROKER1", "localhost:9092")
 MOVIE_TOPIC = os.environ.get("MOVIE_TOPIC", "movie")
@@ -111,9 +71,7 @@ print(f"📊 Trigger Interval: {TRIGGER_INTERVAL}")
 print(f"📁 Checkpoint Dir: {CHECKPOINT_DIR}")
 print("=" * 80)
 
-# =============================================================================
 # SPARK SESSION WITH STREAMING OPTIMIZATIONS
-# =============================================================================
 spark = SparkSession.builder \
     .appName("EnhancedSpeedLayer-LambdaArchitecture") \
     .master(MASTER) \
@@ -132,9 +90,7 @@ spark = SparkSession.builder \
 
 spark.sparkContext.setLogLevel("WARN")
 
-# =============================================================================
 # SCHEMAS
-# =============================================================================
 MOVIE_STREAM_SCHEMA = StructType([
     StructField("id", StringType(), True),
     StructField("title", StringType(), True),
@@ -160,9 +116,7 @@ GENRE_ARRAY_SCHEMA = ArrayType(StructType([
     StructField("name", StringType(), True)
 ]))
 
-# =============================================================================
 # CUSTOM UDFs FOR SPEED LAYER
-# =============================================================================
 from pyspark.sql.functions import udf
 
 @udf(returnType=StringType())
@@ -244,9 +198,7 @@ def flatten_genres(genres_str):
         return genres_str if isinstance(genres_str, str) else ""
 
 
-# =============================================================================
 # MONGODB HELPERS (EXACTLY-ONCE WRITES)
-# =============================================================================
 def save_to_mongodb_upsert(df, collection_name, id_field, epoch_id=None):
     """
     Save DataFrame to MongoDB with UPSERT for exactly-once semantics
@@ -279,9 +231,7 @@ def save_to_mongodb_upsert(df, collection_name, id_field, epoch_id=None):
         return False
 
 
-# =============================================================================
 # STREAM PROCESSING FUNCTIONS
-# =============================================================================
 def process_micro_batch(df, epoch_id):
     """
     Process each micro-batch with complex aggregations
@@ -296,9 +246,7 @@ def process_micro_batch(df, epoch_id):
     sys.stderr.write(f"[Epoch {epoch_id}] Processing {batch_count} records...\n")
     sys.stderr.write(f"{'='*60}\n")
     
-    # ==========================================================================
     # STAGE 1: DATA TRANSFORMATION WITH CUSTOM UDFs
-    # ==========================================================================
     processed_df = df \
         .withColumn("vote_average", safe_float_convert(col("vote_average"))) \
         .withColumn("popularity", safe_float_convert(col("popularity"))) \
@@ -330,15 +278,11 @@ def process_micro_batch(df, epoch_id):
     # Cache for multiple uses
     processed_df.cache()
     
-    # ==========================================================================
     # STAGE 2: SAVE RAW SPEED DATA (EXACTLY-ONCE)
-    # ==========================================================================
     sys.stderr.write(f"[Epoch {epoch_id}] Saving raw speed data...\n")
     save_to_mongodb_upsert(processed_df, "speed_movies", "id", epoch_id)
     
-    # ==========================================================================
     # STAGE 3: REAL-TIME AGGREGATIONS
-    # ==========================================================================
     compute_realtime_aggregations(processed_df, epoch_id)
     
     # Unpersist cached data
@@ -351,9 +295,7 @@ def compute_realtime_aggregations(df, epoch_id):
     """
     sys.stderr.write(f"[Epoch {epoch_id}] Computing aggregations...\n")
     
-    # ==========================================================================
     # 3.1: REAL-TIME GENRE STATISTICS
-    # ==========================================================================
     try:
         genre_exploded = df \
             .filter(col("genres_flat").isNotNull()) \
@@ -390,9 +332,7 @@ def compute_realtime_aggregations(df, epoch_id):
     except Exception as e:
         sys.stderr.write(f"[Epoch {epoch_id}] ❌ Genre stats error: {str(e)}\n")
     
-    # ==========================================================================
     # 3.2: REAL-TIME YEAR STATISTICS
-    # ==========================================================================
     try:
         year_stats = df.filter(col("release_year").isNotNull()).groupBy("release_year").agg(
             count("*").alias("movie_count"),
@@ -422,9 +362,7 @@ def compute_realtime_aggregations(df, epoch_id):
     except Exception as e:
         sys.stderr.write(f"[Epoch {epoch_id}] ❌ Year stats error: {str(e)}\n")
     
-    # ==========================================================================
     # 3.3: REAL-TIME LANGUAGE STATISTICS
-    # ==========================================================================
     try:
         lang_stats = df.filter(col("original_language").isNotNull()).groupBy("original_language").agg(
             count("*").alias("movie_count"),
@@ -440,9 +378,7 @@ def compute_realtime_aggregations(df, epoch_id):
     except Exception as e:
         sys.stderr.write(f"[Epoch {epoch_id}] ❌ Language stats error: {str(e)}\n")
     
-    # ==========================================================================
     # 3.4: REAL-TIME TOP MOVIES (WITH WINDOW RANKINGS)
-    # ==========================================================================
     try:
         rating_window = Window.orderBy(desc("vote_average"), desc("popularity"))
         popularity_window = Window.orderBy(desc("popularity"))
@@ -464,9 +400,7 @@ def compute_realtime_aggregations(df, epoch_id):
     except Exception as e:
         sys.stderr.write(f"[Epoch {epoch_id}] ❌ Top movies error: {str(e)}\n")
     
-    # ==========================================================================
     # 3.5: POPULARITY DISTRIBUTION (PIVOT-LIKE)
-    # ==========================================================================
     try:
         popularity_dist = df.groupBy("popularity_category").agg(
             count("*").alias("movie_count"),
@@ -483,9 +417,7 @@ def compute_realtime_aggregations(df, epoch_id):
     except Exception as e:
         sys.stderr.write(f"[Epoch {epoch_id}] ❌ Popularity distribution error: {str(e)}\n")
     
-    # ==========================================================================
     # 3.6: RATING DISTRIBUTION
-    # ==========================================================================
     try:
         rating_dist = df.groupBy("rating_category").agg(
             count("*").alias("movie_count"),
@@ -500,9 +432,7 @@ def compute_realtime_aggregations(df, epoch_id):
     except Exception as e:
         sys.stderr.write(f"[Epoch {epoch_id}] ❌ Rating distribution error: {str(e)}\n")
     
-    # ==========================================================================
     # 3.7: TIME-BASED PROCESSING STATS
-    # ==========================================================================
     try:
         time_stats = df.groupBy("time_period").agg(
             count("*").alias("movies_processed"),
@@ -520,9 +450,7 @@ def compute_realtime_aggregations(df, epoch_id):
     sys.stderr.write(f"[Epoch {epoch_id}] ✅ All aggregations completed\n")
 
 
-# =============================================================================
 # WINDOW AGGREGATION STREAMS
-# =============================================================================
 def create_window_aggregation_query(df, output_mode="update"):
     """
     Create window-based aggregation stream
@@ -575,9 +503,7 @@ def create_trending_analysis_query(df):
     return trending_df
 
 
-# =============================================================================
 # MAIN SPEED LAYER EXECUTION
-# =============================================================================
 def run_speed_layer():
     """
     Main function to run enhanced speed layer with advanced streaming features
@@ -591,9 +517,7 @@ def run_speed_layer():
     print("⚡ STARTING ENHANCED SPEED LAYER STREAMING")
     print("=" * 80)
     
-    # ==========================================================================
     # READ FROM KAFKA WITH EXACTLY-ONCE CONSUMER SEMANTICS
-    # ==========================================================================
     print("\n📡 Connecting to Kafka...")
     kafka_df = spark \
         .readStream \
@@ -607,9 +531,7 @@ def run_speed_layer():
     
     print("   ✅ Kafka connection established")
     
-    # ==========================================================================
     # PARSE JSON AND ADD EVENT TIMESTAMP FOR WATERMARKING
-    # ==========================================================================
     print("\n🔄 Parsing stream with watermarking...")
     parsed_df = kafka_df \
         .selectExpr(
@@ -633,17 +555,13 @@ def run_speed_layer():
             )
         )
     
-    # ==========================================================================
     # APPLY WATERMARKING FOR LATE DATA HANDLING
-    # ==========================================================================
     print(f"   ⏱️  Applying watermark: {WATERMARK_DELAY}")
     watermarked_df = parsed_df.withWatermark("event_time", WATERMARK_DELAY)
     
-    # ==========================================================================
     # STREAMING QUERY 1: MAIN PROCESSING (foreachBatch)
     # - Handles complex transformations
     # - Exactly-once via checkpointing + idempotent writes
-    # ==========================================================================
     print("\n🚀 Starting streaming queries...")
     print("   📊 Query 1: Main micro-batch processing")
     
@@ -656,11 +574,9 @@ def run_speed_layer():
         .trigger(processingTime=TRIGGER_INTERVAL) \
         .start()
     
-    # ==========================================================================
     # STREAMING QUERY 2: WINDOW-BASED AGGREGATIONS
     # - Tumbling window aggregation
     # - Update mode for aggregations
-    # ==========================================================================
     print("   📊 Query 2: Window-based genre aggregation")
     
     genre_windowed = create_window_aggregation_query(watermarked_df)
@@ -675,9 +591,7 @@ def run_speed_layer():
         .trigger(processingTime=TRIGGER_INTERVAL) \
         .start()
     
-    # ==========================================================================
     # STREAMING QUERY 3: TRENDING ANALYSIS (Sliding Window)
-    # ==========================================================================
     print("   📊 Query 3: Trending analysis (sliding window)")
     
     trending_df = create_trending_analysis_query(watermarked_df)
@@ -692,10 +606,8 @@ def run_speed_layer():
         .trigger(processingTime="1 minute") \
         .start()
     
-    # ==========================================================================
     # STREAMING QUERY 4: DEDUPLICATION (Stateful)
     # - Drop duplicates based on id within watermark window
-    # ==========================================================================
     print("   📊 Query 4: Deduplication stream")
     
     deduped_df = watermarked_df \
@@ -712,9 +624,7 @@ def run_speed_layer():
         .trigger(processingTime=TRIGGER_INTERVAL) \
         .start()
     
-    # ==========================================================================
     # STREAMING STATUS
-    # ==========================================================================
     print("\n" + "=" * 80)
     print("⚡ ENHANCED SPEED LAYER STREAMING STARTED!")
     print("=" * 80)

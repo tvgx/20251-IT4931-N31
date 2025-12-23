@@ -39,7 +39,7 @@ BATCH_SIZE = int(os.environ.get("BATCH_SIZE", "100"))
 YEARS_TO_FETCH = os.environ.get("YEARS_TO_FETCH", "2024,2023,2022,2021,2020")
 CONTINUOUS_MODE = os.environ.get("CONTINUOUS_MODE", "true").lower() == "true"
 FETCH_INTERVAL = int(os.environ.get("FETCH_INTERVAL", "30"))  # seconds between fetches
-MAX_PAGES_PER_YEAR = int(os.environ.get("MAX_PAGES_PER_YEAR", "5"))  # TMDB max is 500 pages - default 5 for testing
+MAX_PAGES_PER_YEAR = int(os.environ.get("MAX_PAGES_PER_YEAR", "100"))  # TMDB max is 500 pages - default 5 for testing
 
 print("=" * 70)
 print("📥 DATA INGESTION LAYER - LAMBDA ARCHITECTURE (Lightweight)")

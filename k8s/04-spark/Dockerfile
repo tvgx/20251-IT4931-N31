@@ -43,10 +43,3 @@ ENV SERVING_PORT=5000
 
 # Expose port cho Serving Layer API
 EXPOSE 5000
-
-# Quay lại user mặc định của Spark (hoặc tiếp tục là root, tùy thuộc vào nhu cầu bảo mật)
-# Nếu không chỉ định, Spark sẽ chạy dưới user mặc định.
-# USER spark
-
-# Default command: Run Lambda Orchestrator
-CMD ["python", "lambda_orchestrator.py", "--all"]

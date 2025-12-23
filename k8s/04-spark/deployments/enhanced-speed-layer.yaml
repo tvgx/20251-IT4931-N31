@@ -1,7 +1,5 @@
-# =============================================================================
 # ENHANCED SPEED LAYER DEPLOYMENT
 # Đọc dữ liệu từ Kafka và ghi vào MongoDB (Serving Layer)
-# =============================================================================
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -76,9 +74,7 @@ spec:
         emptyDir: {}
       restartPolicy: Always
 ---
-# =============================================================================
-# SPEED LAYER với Persistent Checkpoint (cho production)
-# =============================================================================
+# SPEED LAYER với Persistent Checkpoint
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
