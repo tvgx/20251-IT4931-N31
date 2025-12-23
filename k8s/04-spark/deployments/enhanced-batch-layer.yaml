@@ -65,14 +65,6 @@ spec:
           limits:
             memory: "1Gi"
             cpu: "2000m"
-        volumeMounts:
-        - name: app-code
-          mountPath: /opt/app
-      volumes:
-      - name: app-code
-        hostPath:
-          path: /mounted_code
-          type: Directory
       restartPolicy: Always
 ---
 # JOB Version - Chạy 1 lần rồi kết thúc (Recommended for batch processing)
@@ -131,14 +123,6 @@ spec:
           limits:
             memory: "1Gi"
             cpu: "2000m"
-        volumeMounts:
-        - name: app-code
-          mountPath: /opt/app
-      volumes:
-      - name: app-code
-        hostPath:
-          path: /mounted_code
-          type: Directory
       restartPolicy: Never
 ---
 # CRONJOB Version - Chạy định kỳ (e.g., mỗi 6 giờ)
@@ -196,12 +180,4 @@ spec:
               limits:
                 memory: "2Gi"
                 cpu: "2000m"
-            volumeMounts:
-            - name: app-code
-              mountPath: /opt/app
-          volumes:
-          - name: app-code
-            hostPath:
-              path: /mounted_code
-              type: Directory
           restartPolicy: Never

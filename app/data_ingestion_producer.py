@@ -35,8 +35,8 @@ MINIO_BUCKET = os.environ.get("MINIO_BUCKET", "datalake")
 MINIO_ENABLED = os.environ.get("MINIO_ENABLED", "true").lower() == "true"
 
 # Ingestion Configuration
-BATCH_SIZE = int(os.environ.get("BATCH_SIZE", "100"))
-YEARS_TO_FETCH = os.environ.get("YEARS_TO_FETCH", "2024,2023,2022,2021,2020")
+BATCH_SIZE = int(os.environ.get("BATCH_SIZE", "50"))
+YEARS_TO_FETCH = os.environ.get("YEARS_TO_FETCH", "2025,2024,2023,2022,2021,2020,2019,2018,2017,2016,2015,2014,2013,2012,2011,2010")
 CONTINUOUS_MODE = os.environ.get("CONTINUOUS_MODE", "true").lower() == "true"
 FETCH_INTERVAL = int(os.environ.get("FETCH_INTERVAL", "30"))  # seconds between fetches
 
