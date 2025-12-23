@@ -36,10 +36,10 @@ MINIO_ENABLED = os.environ.get("MINIO_ENABLED", "true").lower() == "true"
 
 # Ingestion Configuration
 BATCH_SIZE = int(os.environ.get("BATCH_SIZE", "100"))
-YEARS_TO_FETCH = os.environ.get("YEARS_TO_FETCH", "2024,2023,2022,2021,2020")
+YEARS_TO_FETCH = os.environ.get("YEARS_TO_FETCH", "2025,2024,2023,2022,2021,2020,2019,2018,2017,2016,2015,2014,2013,2012,2011,2010")
 CONTINUOUS_MODE = os.environ.get("CONTINUOUS_MODE", "true").lower() == "true"
 FETCH_INTERVAL = int(os.environ.get("FETCH_INTERVAL", "30"))  # seconds between fetches
-MAX_PAGES_PER_YEAR = int(os.environ.get("MAX_PAGES_PER_YEAR", "100"))  # TMDB max is 500 pages - default 5 for testing
+MAX_PAGES_PER_YEAR = int(os.environ.get("MAX_PAGES_PER_YEAR", "100")) 
 
 print("=" * 70)
 print("📥 DATA INGESTION LAYER - LAMBDA ARCHITECTURE (Lightweight)")
@@ -102,7 +102,7 @@ class MinIOClient:
             print(f"   ❌ MinIO save error: {e}")
             return False
     
-    def append_to_master_csv(self, data, filename="raw/tmdb.csv"):
+    def append_to_master_csv(self, data, filename="tmdb.csv"):
         """Append dữ liệu vào Master Dataset CSV"""
         try:
             if not data:
@@ -340,6 +340,13 @@ def run_ingestion():
                         # Add to batches
                         year_batch.extend(movies)
                         iteration_batch.extend(movies)
+                        
+                        # Save to MinIO every BATCH_SIZE records
+                        if len(iteration_batch) >= BATCH_SIZE and minio_client:
+                            minio_client.append_to_master_csv(iteration_batch)
+                            total_movies_minio += len(iteration_batch)
+                            print(f"   💾 MinIO: Saved {len(iteration_batch)} movies to tmdb.csv")
+                            iteration_batch = []
                     
                     page += 1
                     
